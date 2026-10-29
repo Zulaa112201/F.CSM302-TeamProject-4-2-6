@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#020b1d">
+  <title>Multithreaded Sorting</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script>window.SORT_LIMITS = {{ limits | tojson }};</script>
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Multithreaded Sorting home">
+        <span class="brand-mark"><i></i><i></i><i></i></span>
+        <span class="brand-copy"><strong>Multithreaded Sorting</strong><small>Эрэмбэлэх алгоритмуудыг илүү хурдан, үр дүнтэй</small></span>
+      </a>
+      <div class="controlbar">
+        <div class="control-field algorithm-field">
+          <label for="algorithm">Алгоритм сонгох</label>
+          <select id="algorithm" aria-label="Эрэмбэлэх алгоритм">
+            <option value="merge_sort">Merge Sort</option><option value="bubble_sort">Bubble Sort</option><option value="insertion_sort">Insertion Sort</option><option value="selection_sort">Selection Sort</option><option value="quick_sort">Quick Sort</option><option value="heap_sort">Heap Sort</option><option value="shell_sort">Shell Sort</option><option value="counting_sort">Counting Sort</option>
+          </select>
+        </div>
+        <div class="control-field numbers-field">
+          <label for="numbers">Өгөгдөл оруулах (таслалаар тусгаарлаж бичнэ)</label>
+          <textarea id="numbers" rows="1" spellcheck="false">42, 17, 93, 58, 26, 71, 33, 90</textarea>
+        </div>
+        <button id="startButton" class="btn primary start-button"><span>▶</span> Эрэмбэлэх</button>
+        <button id="sampleButton" class="btn secondary sample-button" type="button" aria-label="Санамсаргүй тоо үүсгэх">⤨ Санамсаргүй тоо</button>
+        <button id="resetButton" class="btn reset-button" type="button" aria-label="Дахин эхлүүлэх">↺ Reset</button>
+      </div>
+    </header>
+
+    <section class="secondary-controls" aria-label="Нэмэлт тохиргоо">
+      <div class="dataset-settings"><label for="datasetSize">Өгөгдлийн хэмжээ <strong id="datasetSizeValue">8</strong></label><input id="datasetSize" type="range" min="4" max="100" step="1" value="8"><div class="range-labels"><span>4 тоо</span><span>100 тоо</span></div></div>
+      <div class="playback-settings"><label for="playbackSpeed">Тоглуулах хурд</label><select id="playbackSpeed"><option value="180">Удаан</option><option value="60" selected>Хэвийн</option><option value="20">Хурдан</option></select></div>
+      <button id="pauseButton" class="btn" disabled>Ⅱ Түр зогсоох</button><button id="resumeButton" class="btn" disabled>▷ Үргэлжлүүлэх</button>
+      <span id="stepInfo" class="step-info">Эрэмбэлэхэд бэлэн</span><div class="progress-track"><div id="progressFill"></div></div>
+      <p id="error" class="error" hidden></p>
+    </section>
+
+    <main>
+      <section class="stage-grid" aria-label="Эрэмбэлэлтийн үе шат">
+        <article class="stage-card">
+          <div class="panel-heading"><h2>1. Анхны өгөгдөл</h2><span id="arrayMeta" class="tag">8 тоо</span></div>
+          <div class="chart-area"><div class="y-axis"><span>100</span><span>80</span><span>60</span><span>40</span><span>20</span><span>0</span></div><div id="bars" class="bars"></div></div>
+        </article>
+        <article class="stage-card split-stage">
+          <div class="panel-heading"><h2>2. Эрэмбэлэлтийн явц (2 хэсэг)</h2><span class="tag">Хуваах &amp; Ялгах</span></div>
+          <div class="split-preview" aria-live="polite">
+            <div class="split-card"><strong>1-р хэсэг (0-3)</strong><div class="mini-chart"><div id="leftWorkerBars" class="worker-bars"></div></div><p><span id="leftCount">4 утга</span> <span id="leftPreview">Эхний хэсэг</span></p></div>
+            <div class="split-arrow">»</div>
+            <div class="split-card"><strong>2-р хэсэг (4-7)</strong><div class="mini-chart"><div id="rightWorkerBars" class="worker-bars"></div></div><p><span id="rightCount">4 утга</span> <span id="rightPreview">Хоёр дахь хэсэг</span></p></div>
+          </div>
+        </article>
+        <article class="stage-card">
+          <div class="panel-heading"><h2>3. Эрэмбэлэгдсэн үр дүн</h2><span id="sortedMeta" class="tag">Эцсийн үр дүн</span></div>
+          <div class="chart-area"><div class="y-axis"><span>100</span><span>80</span><span>60</span><span>40</span><span>20</span><span>0</span></div><div id="sortedBars" class="bars sorted-bars"></div></div>
+          <p id="sortedPreview" class="sorted-preview">Эрэмбэлэгдсэн утгууд энд харагдана.</p>
+        </article>
+      </section>
+
+      <section class="metric-strip">
+        <article class="metric-card"><span class="metric-icon blue-icon">◴</span><div><small>Дараалсан эрэмбэлэлт</small><strong id="seqTime">— <em>ms</em></strong></div><p id="seqResult" class="metric-detail">Хүлээгдэж байна</p></article>
+        <article class="metric-card"><span class="metric-icon violet-icon">ϟ</span><div><small>Зэрэгцээ эрэмбэлэлт (4 thread)</small><strong id="parTime">— <em>ms</em></strong></div><p id="parResult" class="metric-detail">Хүлээгдэж байна</p></article>
+        <article class="metric-card"><span class="metric-icon cyan-icon">▦</span><div><small>Thread тоо</small><strong>4</strong></div><p class="metric-detail">Зэрэгцээ боловсруулалт</p></article>
+        <article class="metric-card success-card"><span class="metric-icon green-icon">✓</span><div><small>Үр дүн</small><strong id="statusText">Бэлэн</strong></div><p id="comparison" class="metric-detail">Зөв эрэмбэлэлтийг шалгана</p></article>
+      </section>
+
+      <section class="bottom-grid">
+        <article class="panel benchmark">
+          <div class="panel-heading"><h2>Benchmark · Алгоритмуудын гүйцэтгэл</h2><button id="benchmarkButton" class="btn small-btn">Benchmark ажиллуулах</button></div>
+          <p id="benchmarkStatus" class="muted">Өгөгдлийн хэмжээнээс хамаарсан гүйцэтгэлийн харьцуулалт</p>
+          <div id="benchmarkLegend" class="legend"></div>
+          <div class="chart-container"><canvas id="performanceChart" width="900" height="300"></canvas></div>
+          <div class="benchmark-note">ⓘ Хугацаа нь өгөгдлийн хэмжээ болон алгоритмаас хамаарна.</div>
+        </article>
+        <article class="panel activity-panel">
+          <div class="panel-heading"><h2>Thread Activity</h2><span class="tag">4 thread</span></div>
+          <p id="threadSummary" class="muted">Thread-ийн ажиллагаа энд харагдана.</p>
+          <div id="threadLegend" class="legend thread-legend"></div>
+          <ol id="threadLog" class="thread-log"></ol>
+          <div class="timeline-heading">● Execution Timeline</div>
+          <div id="timeline" class="timeline"></div>
+          <div class="timeline-scale"><span>0s</span><span>0.02s</span><span>0.04s</span><span>0.06s</span><span>0.08s</span><span>0.10s</span></div>
+        </article>
+      </section>
+    </main>
+    <footer><span class="footer-brand"><span class="brand-mark mini"><i></i><i></i><i></i></span> MULTITHREADED SORTING</span><span>Algorithm Visualization · Python · Flask</span></footer>
+  </div>
+
+  <script>
+    (() => {
+      const numbersInput = document.getElementById('numbers');
+      const sampleButton = document.getElementById('sampleButton');
+      const resetButton = document.getElementById('resetButton');
+      const sizeSlider = document.getElementById('datasetSize');
+      const sizeValue = document.getElementById('datasetSizeValue');
+      const defaultNumbers = '42, 17, 93, 58, 26, 71, 33, 90';
+
+      function updateNumbers(value) {
+        numbersInput.value = value;
+        const count = value.split(/[\s,;]+/).filter(Boolean).length;
+        if (sizeSlider && count >= Number(sizeSlider.min) && count <= Number(sizeSlider.max)) {
+          sizeSlider.value = count;
+          if (sizeValue) sizeValue.textContent = count;
+        }
+        numbersInput.dispatchEvent(new Event('input', { bubbles: true }));
+        numbersInput.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      sampleButton?.addEventListener('click', () => {
+        const count = Math.max(4, Math.min(100, Number(sizeSlider?.value || 8)));
+        const values = new Set();
+        while (values.size < count) values.add(Math.floor(Math.random() * 100) + 1);
+        updateNumbers(Array.from(values).join(', '));
+      });
+
+      sizeSlider?.addEventListener('input', () => {
+        const count = Number(sizeSlider.value);
+        if (sizeValue) sizeValue.textContent = count;
+        const values = numbersInput.value.split(/[\s,;]+/).filter(Boolean);
+        if (values.length !== count) {
+          const generated = Array.from({ length: count }, () => Math.floor(Math.random() * 100) + 1);
+          updateNumbers(generated.join(', '));
+        }
+      });
+
+      resetButton?.addEventListener('click', () => {
+        updateNumbers(defaultNumbers);
+        const sortedBars = document.getElementById('sortedBars');
+        const sortedPreview = document.getElementById('sortedPreview');
+        const seqTime = document.getElementById('seqTime');
+        const parTime = document.getElementById('parTime');
+        const statusText = document.getElementById('statusText');
+        const seqResult = document.getElementById('seqResult');
+        const parResult = document.getElementById('parResult');
+        const comparison = document.getElementById('comparison');
+        const threadLog = document.getElementById('threadLog');
+        const timeline = document.getElementById('timeline');
+        const progressFill = document.getElementById('progressFill');
+        const stepInfo = document.getElementById('stepInfo');
+        if (sortedBars) sortedBars.replaceChildren();
+        if (sortedPreview) sortedPreview.textContent = 'Эрэмбэлэгдсэн утгууд энд харагдана.';
+        if (seqTime) seqTime.innerHTML = '— <em>ms</em>';
+        if (parTime) parTime.innerHTML = '— <em>ms</em>';
+        if (statusText) statusText.textContent = 'Бэлэн';
+        if (seqResult) seqResult.textContent = 'Хүлээгдэж байна';
+        if (parResult) parResult.textContent = 'Хүлээгдэж байна';
+        if (comparison) comparison.textContent = 'Зөв эрэмбэлэлтийг шалгана';
+        if (threadLog) threadLog.replaceChildren();
+        if (timeline) timeline.replaceChildren();
+        if (progressFill) progressFill.style.width = '0%';
+        if (stepInfo) stepInfo.textContent = 'Эрэмбэлэхэд бэлэн';
+        const error = document.getElementById('error');
+        if (error) { error.hidden = true; error.textContent = ''; }
+        const pause = document.getElementById('pauseButton');
+        const resume = document.getElementById('resumeButton');
+        if (pause) pause.disabled = true;
+        if (resume) resume.disabled = true;
+      });
+    })();
+  </script>
+
+</body>
+</html>
