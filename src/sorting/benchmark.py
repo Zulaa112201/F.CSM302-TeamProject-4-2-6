@@ -30,7 +30,7 @@ def _time_ms(function, data):
     return result, (perf_counter() - start) * 1000
 
 
-def run_benchmark(sizes=None, repetitions=3):
+def run_benchmark(numbers=None, sizes=None, repetitions=3):
     """Return one row per input size with timing for each algorithm.
 
     Quadratic algorithms use smaller input sizes to keep the UI responsive.

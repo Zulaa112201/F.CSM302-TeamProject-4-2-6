@@ -908,71 +908,180 @@ function generateRandomNumbers() {
 function drawBenchmarkChart(results) {
     const canvas = elements.performanceChart;
     if (!canvas) return;
+
     const context = canvas.getContext("2d");
+
     if (!context) {
-        elements.benchmarkStatus.textContent = "Canvas график ажиллахгүй байна.";
+        if (elements.benchmarkStatus) {
+            elements.benchmarkStatus.textContent =
+                "Canvas график ажиллахгүй байна.";
+        }
         return;
     }
+
+    const rows = Array.isArray(results) ? results : [];
+
     const rect = canvas.getBoundingClientRect();
     const width = Math.max(320, Math.floor(rect.width || 640));
-    const height = Math.max(220, Math.floor(rect.height || 260));
+    const height = Math.max(260, Math.floor(rect.height || 320));
     const ratio = window.devicePixelRatio || 1;
+
     canvas.width = Math.floor(width * ratio);
     canvas.height = Math.floor(height * ratio);
+
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     context.clearRect(0, 0, width, height);
 
-    const rows = Array.isArray(results) ? results : [];
+    context.font = "12px Segoe UI";
+    context.textAlign = "left";
+    context.textBaseline = "alphabetic";
+
     if (!rows.length || !rows[0].algorithm_ms) {
         context.fillStyle = "#9aa8c8";
-        context.font = "12px Segoe UI";
-        context.fillText("Benchmark ажиллуулж график үүсгэнэ үү.", 16, 28);
+        context.fillText(
+            "Benchmark ажиллуулж график үүсгэнэ үү.",
+            16,
+            28
+        );
         return;
     }
-    const names = Object.keys(rows[0].algorithm_ms);
-    const colors = ["#8297ff", "#ff9bca", "#56e0bd", "#ffbd69", "#b69aff", "#62c8ff", "#f47768", "#c2d66b"];
-    const valuesByName = Object.fromEntries(names.map(name => [name,
-        rows.map(row => row.algorithm_ms?.[name]).filter(value => value !== null && Number.isFinite(Number(value))).map(Number)
-    ]));
-    const maxValue = Math.max(0.001, ...Object.values(valuesByName).flat());
-    const chartTop = 24, chartBottom = height - 48, chartLeft = 58, chartRight = width - 18;
-    const chartWidth = Math.max(1, chartRight - chartLeft), chartHeight = Math.max(1, chartBottom - chartTop);
-    const scaleMax = maxValue * 1.18;
-    context.font = "10px Consolas, monospace";
-    for (let i = 0; i <= 4; i++) {
-        const y = chartTop + chartHeight * i / 4;
-        const value = scaleMax * (1 - i / 4);
-        context.strokeStyle = "rgba(160,180,225,0.15)";
-        context.beginPath(); context.moveTo(chartLeft, y); context.lineTo(chartRight, y); context.stroke();
-        context.fillStyle = "#9aa8c8"; context.textAlign = "right";
-        context.fillText(value < 10 ? value.toFixed(3) : value.toFixed(1), chartLeft - 9, y + 3);
+
+    const row = rows[rows.length - 1];
+    const names = Object.keys(row.algorithm_ms);
+
+    const colors = [
+        "#8297ff",
+        "#ff9bca",
+        "#56e0bd",
+        "#ffbd69",
+        "#b69aff",
+        "#62c8ff",
+        "#f47768",
+        "#c2d66b"
+    ];
+
+    const values = names.map((name) => ({
+        name,
+        time: row.algorithm_ms[name]
+    }));
+
+    const validValues = values
+        .filter((item) =>
+            item.time !== null &&
+            item.time !== undefined &&
+            Number.isFinite(Number(item.time))
+        )
+        .map((item) => Number(item.time));
+
+    if (!validValues.length) {
+        context.fillStyle = "#9aa8c8";
+        context.fillText(
+            "Харуулах benchmark үр дүн алга.",
+            16,
+            28
+        );
+        return;
     }
-    context.strokeStyle = "#667391";
-    context.beginPath(); context.moveTo(chartLeft, chartTop); context.lineTo(chartLeft, chartBottom); context.lineTo(chartRight, chartBottom); context.stroke();
-    const xFor = index => rows.length === 1 ? chartLeft + chartWidth / 2 : chartLeft + index / (rows.length - 1) * chartWidth;
-    const yFor = value => chartBottom - value / scaleMax * chartHeight;
-    names.forEach((name, seriesIndex) => {
-        const color = colors[seriesIndex % colors.length];
-        let started = false;
-        context.strokeStyle = color; context.fillStyle = color; context.lineWidth = 2; context.beginPath();
-        rows.forEach((row, index) => {
-            const raw = row.algorithm_ms?.[name];
-            if (raw === null || raw === undefined || !Number.isFinite(Number(raw))) { started = false; return; }
-            const x = xFor(index), y = yFor(Number(raw));
-            if (!started) { context.moveTo(x, y); started = true; } else context.lineTo(x, y);
-        });
+
+    const maxValue = Math.max(0.001, ...validValues) * 1.2;
+
+    const chartLeft = Math.min(170, width * 0.36);
+    const chartRight = width - 65;
+    const chartTop = 30;
+    const chartBottom = height - 35;
+    const chartWidth = Math.max(1, chartRight - chartLeft);
+    const chartHeight = Math.max(1, chartBottom - chartTop);
+
+    const rowHeight = chartHeight / Math.max(values.length, 1);
+    const barHeight = Math.min(22, rowHeight * 0.62);
+
+    // Гарчиг
+    context.fillStyle = "#e2e8ff";
+    context.font = "bold 13px Segoe UI";
+    context.fillText(
+        `Algorithm performance — ${row.size} items`,
+        12,
+        17
+    );
+
+    // Хэвтээ тор болон хугацааны хуваарь
+    context.font = "10px Consolas, monospace";
+    context.textAlign = "center";
+
+    for (let i = 0; i <= 4; i++) {
+        const x = chartLeft + (chartWidth * i) / 4;
+        const value = (maxValue * i) / 4;
+
+        context.strokeStyle = "rgba(160,180,225,0.18)";
+        context.beginPath();
+        context.moveTo(x, chartTop);
+        context.lineTo(x, chartBottom);
         context.stroke();
-        rows.forEach((row, index) => {
-            const raw = row.algorithm_ms?.[name];
-            if (raw === null || raw === undefined || !Number.isFinite(Number(raw))) return;
-            context.beginPath(); context.arc(xFor(index), yFor(Number(raw)), 3, 0, Math.PI * 2); context.fill();
-        });
+
+        context.fillStyle = "#9aa8c8";
+        context.fillText(
+            `${value.toFixed(2)} ms`,
+            x,
+            height - 12
+        );
+    }
+
+    // Алгоритм бүрийн багана
+    values.forEach((item, index) => {
+        const y = chartTop + rowHeight * index + rowHeight / 2;
+
+        context.textAlign = "right";
+        context.font = "11px Segoe UI";
+        context.fillStyle = "#c4cee8";
+        context.fillText(
+            item.name,
+            chartLeft - 10,
+            y + 4
+        );
+
+        if (
+            item.time === null ||
+            item.time === undefined ||
+            !Number.isFinite(Number(item.time))
+        ) {
+            context.textAlign = "left";
+            context.fillStyle = "#9aa8c8";
+            context.fillText(
+                "Алгассан (>1000 эсвэл дэмжигдээгүй)",
+                chartLeft + 5,
+                y + 4
+            );
+            return;
+        }
+
+        const time = Number(item.time);
+        const barWidth = (time / maxValue) * chartWidth;
+
+        context.fillStyle = colors[index % colors.length];
+        context.fillRect(
+            chartLeft,
+            y - barHeight / 2,
+            Math.max(1, barWidth),
+            barHeight
+        );
+
+        context.textAlign = "left";
+        context.fillStyle = "#e2e8ff";
+        context.font = "10px Consolas, monospace";
+        context.fillText(
+            `${time.toFixed(3)} ms`,
+            Math.min(chartLeft + barWidth + 6, width - 55),
+            y + 4
+        );
     });
-    context.font = "10px Consolas, monospace"; context.fillStyle = "#aab7d7"; context.textAlign = "center";
-    rows.forEach((row, index) => context.fillText(String(row.size), xFor(index), height - 25));
-    context.textAlign = "left"; context.fillStyle = "#9aa8c8"; context.font = "10px Segoe UI";
-    context.fillText("Input size (items)", chartLeft, height - 7);
+
+    if (elements.benchmarkStatus) {
+        elements.benchmarkStatus.textContent =
+            `Benchmark дууслаа. ${row.size} тоо, ` +
+            `${validValues.length}/${names.length} алгоритм хэмжигдсэн.`;
+    }
 }
+
 
 function renderBenchmarkLegend() {
     const colors = ["#8297ff", "#ff9bca", "#56e0bd", "#ffbd69", "#b69aff", "#62c8ff", "#f47768", "#c2d66b"];
@@ -984,25 +1093,25 @@ function renderBenchmarkLegend() {
 
 
 async function runBenchmark() {
+    const button = elements.benchmarkButton;
+
     try {
-        const rawNumbers = elements.numbers.value
-            .trim()
-            .split(/[\s,;]+/)
-            .filter(Boolean);
+        const raw = elements.numbers.value.trim();
 
-        if (rawNumbers.length < 4) {
-            alert("Дор хаяж 4 бүхэл тоо оруулна уу.");
-            return;
+        const parts = raw.split(/[\s,;]+/).filter(Boolean);
+        const numbers = parts.map(Number);
+
+        if (numbers.length < 4 || numbers.length > 5000) {
+            throw new Error("4–5000 бүхэл тоо оруулна уу.");
         }
 
-        const numbers = rawNumbers.map(Number);
-
-        if (numbers.some(
-            (number) => !Number.isSafeInteger(number)
-        )) {
-            alert("Зөвхөн аюулгүй бүхэл тоо оруулна уу.");
-            return;
+        if (numbers.some((n) => !Number.isSafeInteger(n))) {
+            throw new Error("Зөвхөн бүхэл тоо оруулна уу.");
         }
+
+        if (button) button.disabled = true;
+
+        console.log("Benchmark input:", numbers);
 
         const response = await fetch("/api/benchmark", {
             method: "POST",
@@ -1016,17 +1125,21 @@ async function runBenchmark() {
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error || "Benchmark ажиллуулахад алдаа гарлаа.");
+            throw new Error(data.error || "Benchmark хүсэлт амжилтгүй.");
         }
 
         lastBenchmark = data.results || [];
+
+        console.log("Benchmark response:", lastBenchmark);
 
         drawBenchmarkChart(lastBenchmark);
         renderBenchmarkLegend();
 
     } catch (error) {
         console.error("Benchmark error:", error);
-        alert(error.message || "Benchmark ажиллуулахад алдаа гарлаа.");
+        alert(error.message);
+    } finally {
+        if (button) button.disabled = false;
     }
 }
 
@@ -1137,3 +1250,26 @@ if (elements.datasetSizeValue) {
 }
 
 renderBenchmarkLegend();
+
+
+document.getElementById('runBtn').addEventListener('click', async () => {
+    const rawData = document.getElementById('customInputData').value;
+
+    let requestBody = {};
+    if (rawData.trim() !== "") {
+        // Хэрэглэгч юм бичсэн бол таслалаар салгаад тоо руу хөрвүүлэх
+        const customArray = rawData.split(',').map(item => parseInt(item.trim())).filter(num => !isNaN(num));
+        requestBody = { data: customArray };
+    } else {
+        // Хэрэглэгч хоосон орхисон бол default хэмжээгээр явуулах
+        requestBody = { size: 1000 };
+    }
+
+    const response = await fetch('/run-benchmark', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+    });
+    const result = await response.json();
+    updateChart(result);
+});
