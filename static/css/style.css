@@ -935,3 +935,159 @@ footer {
         min-height: 240px
     }
 }
+
+@media(max-width:430px) {
+    .app-shell {
+        padding: 0 9px
+    }
+
+    .brand-copy strong {
+        font-size: 16px
+    }
+
+    .controlbar {
+        padding: 8px;
+        gap: 7px
+    }
+
+    .algorithm-field {
+        flex-basis: 100%
+    }
+
+    .numbers-field {
+        order: 0
+    }
+
+    .start-button {
+        order: 1
+    }
+
+    .icon-button {
+        order: 2
+    }
+
+    .secondary-controls .dataset-settings {
+        width: 100%
+    }
+
+    .metric-strip {
+        grid-template-columns: 1fr 1fr;
+        gap: 6px
+    }
+
+    .metric-card {
+        padding: 8px;
+        gap: 7px
+    }
+
+    .metric-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 15px
+    }
+
+    .metric-card strong {
+        font-size: 14px
+    }
+
+    .metric-card small {
+        font-size: 8px
+    }
+
+    .metric-detail {
+        font-size: 7px
+    }
+
+    .panel-heading h2 {
+        font-size: 11px
+    }
+
+    .tag {
+        font-size: 7px;
+        padding: 3px 5px
+    }
+
+    .split-card {
+        padding: 6px 5px
+    }
+
+    .split-card>strong {
+        font-size: 8px
+    }
+
+    .timeline-scale {
+        font-size: 6px
+    }
+
+    footer {
+        flex-wrap: wrap
+    }
+}
+
+
+/* Clearly visible sample/reset controls */
+.controlbar .sample-button,
+.controlbar .reset-button {
+    min-height: 35px;
+    padding: 8px 11px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.controlbar .sample-button {
+    border-color: rgba(53, 224, 176, .42);
+    color: #53e8c0;
+    background: rgba(53, 224, 176, .08);
+}
+
+.controlbar .sample-button:hover {
+    background: rgba(53, 224, 176, .15);
+    border-color: #35e0b0;
+}
+
+.controlbar .reset-button {
+    border-color: rgba(139, 177, 223, .3);
+    color: #d8e7fb;
+    background: #081a31;
+}
+
+.controlbar .reset-button:hover {
+    border-color: #4d9cff;
+    background: #0d2b4c;
+}
+
+@media (max-width: 760px) {
+
+    .controlbar .sample-button,
+    .controlbar .reset-button {
+        flex: 1 1 auto;
+    }
+}
+
+
+
+#sortedBars {
+    gap: 2px;
+}
+
+#sortedBars .bar {
+    width: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    background: #2a9d9f;
+    /* teal */
+    transition: height 0.1s ease;
+}
+
+#sortedBars .bar.active {
+    /* шар */
+    background: #ffe600 !important;
+}
+
+#sortedBars .bar.pivot {
+    background: #e60000 !important;
+}
+
+#sortedBars .bar.sorted {
+    background: #22c55e !important;
+}
