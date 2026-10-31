@@ -202,6 +202,8 @@ function renderWorkerBars(container, values, side) {
 }
 
 
+let previousSortedValues = [];
+
 function renderSortedBars(values, event = null) {
     const container = elements.sortedBars;
     if (!container) return;
@@ -221,15 +223,32 @@ function renderSortedBars(values, event = null) {
             : "Эрэмбэлсний дараах үр дүн энд харагдана.";
     }
 
-    if (!nums.length) return;
+    if (!nums.length) {
+        previousSortedValues = [];
+        return;
+    }
 
+    // Өмнөх алхамтай харьцуулж, утга нь өөрчлөгдсөн (солигдсон) индексийг олно
+    const changed = new Set();
+    if (event) {
+        const base = previousSortedValues.length === nums.length
+            ? previousSortedValues
+            : originalNumbers;
+
+        if (base.length === nums.length) {
+            nums.forEach((value, index) => {
+                if (value !== base[index]) changed.add(index);
+            });
+        }
+    }
+    previousSortedValues = event ? nums.slice() : [];
+    let redIndex = -1;
+    changed.forEach(i => {
+        if (redIndex === -1 || nums[i] > nums[redIndex]) redIndex = i;
+    });
     const min = Math.min(...nums);
     const max = Math.max(...nums);
     const range = max - min || 1;
-
-    // Алхам бүрийн task болон kind-аас шалтгаалж динамикаар өнгө ялгах
-    const taskText = event?.task || "";
-    const isSwapping = taskText.includes("соль") || taskText.includes("байрлал") || event?.kind === "merge";
 
     nums.forEach((value, index) => {
         const item = document.createElement("div");
@@ -237,24 +256,14 @@ function renderSortedBars(values, event = null) {
 
         const bar = document.createElement("div");
         bar.className = "bar";
+        if (event?.kind === "finish") {
+            bar.classList.add("sorted");
+        } else if (changed.has(index)) {
+            bar.classList.add(index === redIndex ? "pivot" : "active");
+        }
 
         bar.style.height =
             `${max === min ? 65 : 12 + ((value - min) / range) * 88}%`;
-
-        // Анхдагч өнгө (Цэнхэр)
-        bar.style.background = "linear-gradient(180deg, #6489D8, #4266B5)";
-
-        // Хэрэв эрэмбэлэгдэж дууссан бол ногоон болгох
-        if (event?.kind === "finish") {
-            bar.style.background = "linear-gradient(180deg, #36D399, #15966A)";
-        } 
-        // Явцын дунд хийгдэж буй үйлдэл дээр шар/улбар шар эсвэл улаан өнгө өгөх
-        else if (isSwapping) {
-            bar.style.background = "linear-gradient(180deg, #FF7777, #D93636)"; // Улаан (Солилцох үед)
-        } else {
-            bar.style.background = "linear-gradient(180deg, #FFD166, #E5A03D)"; // Шар (Харьцуулах/хайх үед)
-        }
-
         bar.title = `Индекс: ${index}, утга: ${value}`;
 
         const label = document.createElement("span");
@@ -265,7 +274,6 @@ function renderSortedBars(values, event = null) {
         container.appendChild(item);
     });
 }
-
 function renderBars(values, sortedSet = null) {
     elements.bars.replaceChildren();
 
@@ -693,7 +701,7 @@ async function runSort(options = {}) {
         const selectedAlgorithm = elements.algorithm?.value || "merge_sort";
 
         renderBars(originalNumbers);
-    renderSortedBars([]);
+        renderSortedBars([]);
         resetResults();
 
         elements.threadLog.replaceChildren();
@@ -723,7 +731,7 @@ async function runSort(options = {}) {
 
             try {
                 message = JSON.parse(text).error || message;
-            } catch {}
+            } catch { }
 
             throw new Error(message);
         }
@@ -848,7 +856,7 @@ async function runSort(options = {}) {
         }
 
         renderBars(originalNumbers);
-    renderSortedBars([]);
+        renderSortedBars([]);
 
         elements.threadSummary.textContent =
             `${events.length} event бэлэн · Тоглуулах товчийг дарж ажиглана уу.`;
